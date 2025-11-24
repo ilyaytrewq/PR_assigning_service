@@ -1,18 +1,20 @@
-FROM golang1.25.4 as builder
+FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
-COPY go.sum go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-RUN go build -o pr_service ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o pr_service ./cmd/main.go
 
-RUN ubuntu:24.04 
+FROM alpine:3.20
 
 WORKDIR /app
 
 COPY --from=builder /app/pr_service .
 
-CMD [ "./pr_service" ]
+EXPOSE 8080
+
+CMD ["./pr_service"]
