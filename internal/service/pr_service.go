@@ -161,7 +161,7 @@ func (s *PRService) GetCountPRs(ctx context.Context) (total int, open int, merge
 	return s.prs.CountPRs(ctx)
 }
 
-func (s *PRService) GetAllUsersWithAssignmentCounts(ctx context.Context) ([]struct{
+func (s *PRService) GetAllUsersWithAssignmentCounts(ctx context.Context) ([]struct {
 	UserID      string `json:"user_id"`
 	Assignments int    `json:"assignments"`
 }, error) {

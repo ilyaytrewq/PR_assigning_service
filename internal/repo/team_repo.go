@@ -19,6 +19,30 @@ func NewTeamRepo(db *sql.DB) *TeamRepo {
 	}
 }
 
+func (tr *TeamRepo) InsertTeamTx(ctx context.Context, tx *sql.Tx, team *api.Team) error {
+	const query = `
+        INSERT INTO teams (team_name)
+        VALUES ($1)
+        ON CONFLICT (team_name) DO NOTHING;
+    `
+
+	res, err := tx.ExecContext(ctx, query, team.TeamName)
+	if err != nil {
+		return fmt.Errorf("insert team %s failed: %w", team.TeamName, err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("insert team %s: rows affected: %w", team.TeamName, err)
+	}
+
+	if rows == 0 {
+		return ErrTeamExists
+	}
+
+	return nil
+}
+
 func (tr *TeamRepo) InsertTeam(ctx context.Context, team *api.Team) error {
 	const query = `
         INSERT INTO teams (team_name)

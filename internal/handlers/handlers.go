@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"ilyaytrewq/PR_assigning_service/internal/api"
 	"ilyaytrewq/PR_assigning_service/internal/service"
@@ -19,9 +20,10 @@ func NewHandler(services *service.Services) *Handler {
 }
 
 func (h *Handler) PostPullRequestCreate(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var body api.PostPullRequestCreateJSONBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		log.Println("PostPullRequestCreate decode:", err)
+		log.Printf("PostPullRequestCreate decode error: %v", err)
 		h.writeError(w, http.StatusBadRequest, api.NOTFOUND, "invalid request body")
 		return
 	}
@@ -35,7 +37,7 @@ func (h *Handler) PostPullRequestCreate(w http.ResponseWriter, r *http.Request) 
 		case errors.Is(err, service.ErrPRAlreadyExists):
 			h.writeError(w, http.StatusBadRequest, api.PREXISTS, "pull_request_id already exists")
 		default:
-			log.Println("PostPullRequestCreate:", err)
+			log.Printf("PostPullRequestCreate internal error: %v", err)
 			h.writeError(w, http.StatusInternalServerError, api.NOTFOUND, "internal error")
 		}
 		return
@@ -46,14 +48,16 @@ func (h *Handler) PostPullRequestCreate(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewEncoder(w).Encode(struct {
 		Pr *api.PullRequest `json:"pr"`
 	}{Pr: pr}); err != nil {
-		log.Println("PostPullRequestCreate encode:", err)
+		log.Printf("PostPullRequestCreate encode error: %v", err)
 	}
+	log.Printf("PostPullRequestCreate success: author_id=%s pr_id=%s duration=%s", body.AuthorId, body.PullRequestId, time.Since(start))
 }
 
 func (h *Handler) PostPullRequestMerge(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var body api.PostPullRequestMergeJSONBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		log.Println("PostPullRequestMerge decode:", err)
+		log.Printf("PostPullRequestMerge decode error: %v", err)
 		h.writeError(w, http.StatusBadRequest, api.NOTFOUND, "invalid request body")
 		return
 	}
@@ -64,7 +68,7 @@ func (h *Handler) PostPullRequestMerge(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, service.ErrPRNotFound):
 			h.writeError(w, http.StatusNotFound, api.NOTFOUND, "pull request not found")
 		default:
-			log.Println("PostPullRequestMerge:", err)
+			log.Printf("PostPullRequestMerge internal error: %v", err)
 			h.writeError(w, http.StatusInternalServerError, api.NOTFOUND, "internal error")
 		}
 		return
@@ -75,14 +79,16 @@ func (h *Handler) PostPullRequestMerge(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(struct {
 		Pr *api.PullRequest `json:"pr"`
 	}{Pr: pr}); err != nil {
-		log.Println("PostPullRequestMerge encode:", err)
+		log.Printf("PostPullRequestMerge encode error: %v", err)
 	}
+	log.Printf("PostPullRequestMerge success: pr_id=%s duration=%s", body.PullRequestId, time.Since(start))
 }
 
 func (h *Handler) PostPullRequestReassign(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var body api.PostPullRequestReassignJSONBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		log.Println("PostPullRequestReassign decode:", err)
+		log.Printf("PostPullRequestReassign decode error: %v", err)
 		h.writeError(w, http.StatusBadRequest, api.NOTFOUND, "invalid request body")
 		return
 	}
@@ -99,7 +105,7 @@ func (h *Handler) PostPullRequestReassign(w http.ResponseWriter, r *http.Request
 		case errors.Is(err, service.ErrNoCandidate):
 			h.writeError(w, http.StatusConflict, api.NOCANDIDATE, "no candidate for reassignment")
 		default:
-			log.Println("PostPullRequestReassign:", err)
+			log.Printf("PostPullRequestReassign internal error: %v", err)
 			h.writeError(w, http.StatusInternalServerError, api.NOTFOUND, "internal error")
 		}
 		return
@@ -114,14 +120,16 @@ func (h *Handler) PostPullRequestReassign(w http.ResponseWriter, r *http.Request
 		Pr:         pr,
 		ReplacedBy: replacedBy,
 	}); err != nil {
-		log.Println("PostPullRequestReassign encode:", err)
+		log.Printf("PostPullRequestReassign encode error: %v", err)
 	}
+	log.Printf("PostPullRequestReassign success: pr_id=%s old_user=%s new_user=%s duration=%s", body.PullRequestId, body.OldUserId, replacedBy, time.Since(start))
 }
 
 func (h *Handler) PostTeamAdd(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var team api.Team
 	if err := json.NewDecoder(r.Body).Decode(&team); err != nil {
-		log.Println("PostTeamAdd decode:", err)
+		log.Printf("PostTeamAdd decode error: %v", err)
 		h.writeError(w, http.StatusBadRequest, api.NOTFOUND, "invalid request body")
 		return
 	}
@@ -134,9 +142,10 @@ func (h *Handler) PostTeamAdd(w http.ResponseWriter, r *http.Request) {
 	if err := h.services.Teams.AddTeam(r.Context(), &team); err != nil {
 		switch {
 		case errors.Is(err, service.ErrTeamAlreadyExists):
+			log.Printf("PostTeamAdd error: %v", err)
 			h.writeError(w, http.StatusBadRequest, api.TEAMEXISTS, "team_name already exists")
 		default:
-			log.Println("PostTeamAdd:", err)
+			log.Printf("PostTeamAdd internal error: %v", err)
 			h.writeError(w, http.StatusInternalServerError, api.NOTFOUND, "internal error")
 		}
 		return
@@ -147,11 +156,13 @@ func (h *Handler) PostTeamAdd(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(struct {
 		Team *api.Team `json:"team"`
 	}{Team: &team}); err != nil {
-		log.Println("PostTeamAdd encode:", err)
+		log.Printf("PostTeamAdd encode error: %v", err)
 	}
+	log.Printf("PostTeamAdd success: team_name=%s members=%d duration=%s", team.TeamName, len(team.Members), time.Since(start))
 }
 
 func (h *Handler) GetTeamGet(w http.ResponseWriter, r *http.Request, params api.GetTeamGetParams) {
+	start := time.Now()
 	teamName := string(params.TeamName)
 
 	team, err := h.services.Teams.GetTeam(r.Context(), teamName)
@@ -160,7 +171,7 @@ func (h *Handler) GetTeamGet(w http.ResponseWriter, r *http.Request, params api.
 		case errors.Is(err, service.ErrTeamNotFound):
 			h.writeError(w, http.StatusNotFound, api.NOTFOUND, "team not found")
 		default:
-			log.Println("GetTeamGet:", err)
+			log.Printf("GetTeamGet internal error: %v", err)
 			h.writeError(w, http.StatusInternalServerError, api.NOTFOUND, "internal error")
 		}
 		return
@@ -171,11 +182,13 @@ func (h *Handler) GetTeamGet(w http.ResponseWriter, r *http.Request, params api.
 	if err := json.NewEncoder(w).Encode(struct {
 		Team *api.Team `json:"team"`
 	}{Team: team}); err != nil {
-		log.Println("GetTeamGet encode:", err)
+		log.Printf("GetTeamGet encode error: %v", err)
 	}
+	log.Printf("GetTeamGet success: team_name=%s members=%d duration=%s", teamName, len(team.Members), time.Since(start))
 }
 
 func (h *Handler) GetUsersGetReview(w http.ResponseWriter, r *http.Request, params api.GetUsersGetReviewParams) {
+	start := time.Now()
 	userID := string(params.UserId)
 
 	prs, err := h.services.Users.GetReviewPullRequests(r.Context(), userID)
@@ -184,7 +197,7 @@ func (h *Handler) GetUsersGetReview(w http.ResponseWriter, r *http.Request, para
 			h.writeError(w, http.StatusNotFound, api.NOTFOUND, "user not found")
 			return
 		}
-		log.Println("GetUsersGetReview:", err)
+		log.Printf("GetUsersGetReview internal error: %v", err)
 		h.writeError(w, http.StatusInternalServerError, api.NOTFOUND, "internal error")
 		return
 	}
@@ -198,14 +211,16 @@ func (h *Handler) GetUsersGetReview(w http.ResponseWriter, r *http.Request, para
 		UserID:       userID,
 		PullRequests: toShorts(prs),
 	}); err != nil {
-		log.Println("GetUsersGetReview encode:", err)
+		log.Printf("GetUsersGetReview encode error: %v", err)
 	}
+	log.Printf("GetUsersGetReview success: user_id=%s prs=%d duration=%s", userID, len(prs), time.Since(start))
 }
 
 func (h *Handler) PostUsersSetIsActive(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var body api.PostUsersSetIsActiveJSONBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		log.Println("PostUsersSetIsActive decode:", err)
+		log.Printf("PostUsersSetIsActive decode error: %v", err)
 		h.writeError(w, http.StatusBadRequest, api.NOTFOUND, "invalid request body")
 		return
 	}
@@ -216,7 +231,7 @@ func (h *Handler) PostUsersSetIsActive(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, service.ErrUserNotFound):
 			h.writeError(w, http.StatusNotFound, api.NOTFOUND, "user not found")
 		default:
-			log.Println("PostUsersSetIsActive:", err)
+			log.Printf("PostUsersSetIsActive internal error: %v", err)
 			h.writeError(w, http.StatusInternalServerError, api.NOTFOUND, "internal error")
 		}
 		return
@@ -227,14 +242,16 @@ func (h *Handler) PostUsersSetIsActive(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(struct {
 		User *api.User `json:"user"`
 	}{User: user}); err != nil {
-		log.Println("PostUsersSetIsActive encode:", err)
+		log.Printf("PostUsersSetIsActive encode error: %v", err)
 	}
+	log.Printf("PostUsersSetIsActive success: user_id=%s is_active=%t duration=%s", body.UserId, body.IsActive, time.Since(start))
 }
 
 func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	stats, err := h.services.GetStats(r.Context())
 	if err != nil {
-		log.Println("GetStats:", err)
+		log.Printf("GetStats internal error: %v", err)
 		h.writeError(w, http.StatusInternalServerError, api.NOTFOUND, "internal error")
 		return
 	}
@@ -242,8 +259,9 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(stats); err != nil {
-		log.Println("GetStats encode:", err)
+		log.Printf("GetStats encode error: %v", err)
 	}
+	log.Printf("GetStats success: duration=%s", time.Since(start))
 }
 
 func (h *Handler) writeError(w http.ResponseWriter, status int, code api.ErrorResponseErrorCode, message string) {
@@ -261,7 +279,7 @@ func (h *Handler) writeError(w http.ResponseWriter, status int, code api.ErrorRe
 	}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Println("writeError encode:", err)
+		log.Printf("writeError encode error: %v", err)
 	}
 }
 

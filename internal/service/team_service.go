@@ -2,41 +2,60 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 
 	"ilyaytrewq/PR_assigning_service/internal/api"
 	"ilyaytrewq/PR_assigning_service/internal/repo"
 )
 
 type TeamService struct {
+	db    *sql.DB
 	teams *repo.TeamRepo
 	users *repo.UserRepository
 }
 
-func NewTeamService(teams *repo.TeamRepo, users *repo.UserRepository) *TeamService {
-	return &TeamService{teams: teams, users: users}
+func NewTeamService(db *sql.DB, teams *repo.TeamRepo, users *repo.UserRepository) *TeamService {
+	return &TeamService{db: db, teams: teams, users: users}
 }
 
 func (s *TeamService) AddTeam(ctx context.Context, team *api.Team) error {
-	if err := s.teams.InsertTeam(ctx, team); err != nil {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx AddTeam: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			if rbErr := tx.Rollback(); rbErr != nil {
+				log.Printf("AddTeam rollback error: %v", rbErr)
+			}
+		}
+	}()
+
+	if err = s.teams.InsertTeamTx(ctx, tx, team); err != nil {
 		if errors.Is(err, repo.ErrTeamExists) {
 			return ErrTeamAlreadyExists
 		}
 		return err
 	}
 
-	for _, m := range team.Members {
+	for _, member := range team.Members {
 		u := &api.User{
-			UserId:   m.UserId,
-			Username: m.Username,
+			UserId:   member.UserId,
+			Username: member.Username,
 			TeamName: team.TeamName,
-			IsActive: m.IsActive,
+			IsActive: member.IsActive,
 		}
 
-		if err := s.users.InsertOrUpdate(ctx, u); err != nil {
-			return fmt.Errorf("add team: upsert user %s: %w", m.UserId, err)
+		if err = s.users.InsertOrUpdateTx(ctx, tx, u); err != nil {
+			return fmt.Errorf("add team %s: user %s: %w", team.TeamName, member.UserId, err)
 		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx AddTeam: %w", err)
 	}
 
 	return nil

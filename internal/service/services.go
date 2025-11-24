@@ -2,72 +2,118 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"log"
+	"sync"
 
 	"ilyaytrewq/PR_assigning_service/internal/repo"
 )
 
 type Services struct {
+	db    *sql.DB
 	Teams *TeamService
 	Users *UserService
 	PRs   *PRService
 }
 
 func NewServices(
+	db *sql.DB,
 	teamRepo *repo.TeamRepo,
 	userRepo *repo.UserRepository,
 	prRepo *repo.PRRepo,
 ) *Services {
 	return &Services{
-		Teams: NewTeamService(teamRepo, userRepo),
+		db:    db,
+		Teams: NewTeamService(db, teamRepo, userRepo),
 		Users: NewUserService(userRepo, prRepo),
 		PRs:   NewPRService(prRepo, userRepo, teamRepo),
 	}
 }
 
 type StatsResult struct {
-	TotalTeams        int `json:"total_teams"`
+	TotalTeams int `json:"total_teams"`
 
-	TotalPullRequests int `json:"total_pull_requests"`
-	OpenPullRequests  int `json:"open_pull_requests"`
+	TotalPullRequests  int `json:"total_pull_requests"`
+	OpenPullRequests   int `json:"open_pull_requests"`
 	MergedPullRequests int `json:"merged_pull_requests"`
 
-	TotalUsers        int `json:"total_users"`
-	ActiveUsers       int `json:"active_users"`
-	users []struct {
+	TotalUsers  int `json:"total_users"`
+	ActiveUsers int `json:"active_users"`
+	users       []struct {
 		UserID      string `json:"user_id"`
 		Assignments int    `json:"assignments"`
 	}
 }
 
 func (s *Services) GetStats(ctx context.Context) (*StatsResult, error) {
-	var result StatsResult
-	
-	totalUsers, activeUsers, err := s.Users.GetCountUsers(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result.TotalUsers = totalUsers
-	result.ActiveUsers = activeUsers
+	var (
+		result StatsResult
+		wg     sync.WaitGroup
+		mu     sync.Mutex
+		errs   = make(chan error, 4)
+	)
 
-	totalTeams, err := s.Teams.CountTeams(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result.TotalTeams = totalTeams
+	wg.Go(func() {
+		totalUsers, activeUsers, err := s.Users.GetCountUsers(ctx)
+		if err != nil {
+			errs <- err
+			return
+		}
+		mu.Lock()
+		result.TotalUsers = totalUsers
+		result.ActiveUsers = activeUsers
+		mu.Unlock()
+	})
 
-	totalPRs, openPRs, mergedPRs, err := s.PRs.GetCountPRs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result.TotalPullRequests = totalPRs
-	result.OpenPullRequests = openPRs
-	result.MergedPullRequests = mergedPRs
+	wg.Go(func() {
+		totalTeams, err := s.Teams.CountTeams(ctx)
+		if err != nil {
+			errs <- err
+			return
+		}
+		mu.Lock()
+		result.TotalTeams = totalTeams
+		mu.Unlock()
+	})
 
-	users, err := s.PRs.GetAllUsersWithAssignmentCounts(ctx)
-	if err != nil {
-		return nil, err
+	wg.Go(func() {
+		totalPRs, openPRs, mergedPRs, err := s.PRs.GetCountPRs(ctx)
+		if err != nil {
+			errs <- err
+			return
+		}
+		mu.Lock()
+		result.TotalPullRequests = totalPRs
+		result.OpenPullRequests = openPRs
+		result.MergedPullRequests = mergedPRs
+		mu.Unlock()
+	})
+
+	wg.Go(func() {
+		users, err := s.PRs.GetAllUsersWithAssignmentCounts(ctx)
+		if err != nil {
+			errs <- err
+
+			return
+		}
+		mu.Lock()
+		result.users = users
+		mu.Unlock()
+	})
+
+	wg.Wait()
+	close(errs)
+
+	var resErr error = nil
+	for err := range errs {
+		log.Printf("GetStats error: %v", err)
+		resErr = errors.Join(resErr, err)
 	}
-	result.users = users
+
+	if resErr != nil {
+		return nil, resErr
+	}
 
 	return &result, nil
 }

@@ -271,7 +271,7 @@ func (r *PRRepo) CountPRs(ctx context.Context) (total int, open int, merged int,
 	return total, open, merged, nil
 }
 
-func (r *PRRepo) GetAllUsersWithAssignmentCounts(ctx context.Context) ([]struct{
+func (r *PRRepo) GetAllUsersWithAssignmentCounts(ctx context.Context) ([]struct {
 	UserID      string `json:"user_id"`
 	Assignments int    `json:"assignments"`
 }, error) {
@@ -286,13 +286,13 @@ func (r *PRRepo) GetAllUsersWithAssignmentCounts(ctx context.Context) ([]struct{
 	}
 	defer rows.Close()
 
-	var result []struct{
+	var result []struct {
 		UserID      string `json:"user_id"`
 		Assignments int    `json:"assignments"`
 	}
 
 	for rows.Next() {
-		var user struct{
+		var user struct {
 			UserID      string `json:"user_id"`
 			Assignments int    `json:"assignments"`
 		}
@@ -301,7 +301,7 @@ func (r *PRRepo) GetAllUsersWithAssignmentCounts(ctx context.Context) ([]struct{
 		}
 		result = append(result, user)
 	}
-	
+
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("rows iteration failed: %w", err)
 	}

@@ -44,7 +44,7 @@ func main() {
 	teamRepo := repo.NewTeamRepo(db)
 	prRepo := repo.NewPRRepo(db)
 
-	h := handlers.NewHandler(service.NewServices(teamRepo, userRepo, prRepo))
+	h := handlers.NewHandler(service.NewServices(db, teamRepo, userRepo, prRepo))
 
 	apiHandler := api.Handler(h)
 
@@ -57,7 +57,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      mux,
+		Handler:      loggingMiddleware(mux),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -66,6 +66,28 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("server error: %v", err)
 	}
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		lrw := &loggingResponseWriter{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(lrw, r)
+
+		duration := time.Since(start)
+		log.Printf("%s %s %d %s", r.Method, r.URL.Path, lrw.status, duration)
+	})
+}
+
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *loggingResponseWriter) WriteHeader(statusCode int) {
+	w.status = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
 }
 
 func getEnv(key, def string) string {

@@ -17,6 +17,31 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
+func (ur *UserRepository) InsertOrUpdateTx(ctx context.Context, tx *sql.Tx, user *api.User) error {
+	const query = `
+        INSERT INTO users (user_id, username, team_name, is_active)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (user_id)
+        DO UPDATE SET
+            username  = EXCLUDED.username,
+            team_name = EXCLUDED.team_name,
+            is_active = EXCLUDED.is_active;
+    `
+
+	_, err := tx.ExecContext(ctx, query,
+		user.UserId,
+		user.Username,
+		user.TeamName,
+		user.IsActive,
+	)
+
+	if err != nil {
+		return fmt.Errorf("user insert/update (%s) failed: %w", user.UserId, err)
+	}
+
+	return nil
+}
+
 func (ur *UserRepository) InsertOrUpdate(ctx context.Context, user *api.User) error {
 	const query = `
         INSERT INTO users (user_id, username, team_name, is_active)
