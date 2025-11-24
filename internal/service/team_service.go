@@ -52,3 +52,11 @@ func (s *TeamService) GetTeam(ctx context.Context, teamName string) (*api.Team, 
 	}
 	return team, nil
 }
+
+func (s *TeamService) CountTeams(ctx context.Context) (int, error) {
+	count, err := s.teams.CountTeams(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}

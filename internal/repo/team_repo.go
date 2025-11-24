@@ -79,3 +79,15 @@ func (tr *TeamRepo) GetTeam(ctx context.Context, teamName string) (*api.Team, er
 
 	return &team, nil
 }
+
+func (tr *TeamRepo) CountTeams(ctx context.Context) (int, error) {
+	const query = `
+		SELECT COUNT(*) FROM teams
+	`
+	var count int
+	err := tr.db.QueryRowContext(ctx, query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count teams: %w", err)
+	}
+	return count, nil
+}

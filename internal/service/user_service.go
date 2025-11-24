@@ -36,3 +36,7 @@ func (s *UserService) GetReviewPullRequests(ctx context.Context, userId string) 
 	}
 	return prs, nil
 }
+
+func (s *UserService) GetCountUsers(ctx context.Context) (total int, active int, err error) {
+	return s.users.CountUsersAndActive(ctx)
+}

@@ -9,8 +9,6 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/lib/pq"
-
 	"ilyaytrewq/PR_assigning_service/internal/api"
 	"ilyaytrewq/PR_assigning_service/internal/handlers"
 	"ilyaytrewq/PR_assigning_service/internal/repo"
@@ -48,7 +46,11 @@ func main() {
 
 	h := handlers.NewHandler(service.NewServices(teamRepo, userRepo, prRepo))
 
-	mux := api.Handler(h)
+	apiHandler := api.Handler(h)
+
+	mux := http.NewServeMux()
+	mux.Handle("/", apiHandler)
+	mux.HandleFunc("/stats", h.GetStats)
 
 	addr := ":8080"
 	log.Printf("starting server on %s", addr)

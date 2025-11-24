@@ -10,6 +10,12 @@ import (
 	"ilyaytrewq/PR_assigning_service/internal/repo"
 )
 
+type PRService struct {
+	prs   *repo.PRRepo
+	users *repo.UserRepository
+	teams *repo.TeamRepo
+}
+
 func NewPRService(prs *repo.PRRepo, users *repo.UserRepository, teams *repo.TeamRepo) *PRService {
 	return &PRService{
 		prs:   prs,
@@ -149,4 +155,15 @@ func (s *PRService) ReassignReviewer(ctx context.Context, body *api.PostPullRequ
 	}
 
 	return updatedPR, newReviewerID, nil
+}
+
+func (s *PRService) GetCountPRs(ctx context.Context) (total int, open int, merged int, err error) {
+	return s.prs.CountPRs(ctx)
+}
+
+func (s *PRService) GetAllUsersWithAssignmentCounts(ctx context.Context) ([]struct{
+	UserID      string `json:"user_id"`
+	Assignments int    `json:"assignments"`
+}, error) {
+	return s.prs.GetAllUsersWithAssignmentCounts(ctx)
 }

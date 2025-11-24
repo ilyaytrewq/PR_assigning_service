@@ -90,3 +90,19 @@ func (ur *UserRepository) Get(ctx context.Context, userId string) (*api.User, er
 
 	return &user, nil
 }
+
+func (ur *UserRepository) CountUsersAndActive(ctx context.Context) (total int, active int, err error) {
+	const query = `
+		SELECT
+			COUNT(*) AS total,
+			COUNT(*) FILTER (WHERE is_active) AS active
+		FROM users;
+	`
+
+	err = ur.db.QueryRowContext(ctx, query).Scan(&total, &active)
+	if err != nil {
+		return 0, 0, fmt.Errorf("count users failed: %w", err)
+	}
+
+	return total, active, nil
+}

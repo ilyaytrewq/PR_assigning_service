@@ -254,3 +254,56 @@ func (r *PRRepo) GetByReviewer(ctx context.Context, userID string) ([]*api.PullR
 
 	return result, nil
 }
+
+func (r *PRRepo) CountPRs(ctx context.Context) (total int, open int, merged int, err error) {
+	const query = `
+		SELECT
+			COUNT(*) AS total,
+			COUNT(*) FILTER (WHERE status = 'OPEN') AS open,
+			COUNT(*) FILTER (WHERE status = 'MERGED') AS merged
+		FROM pull_requests;
+	`
+
+	err = r.db.QueryRowContext(ctx, query).Scan(&total, &open, &merged)
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("count PRs failed: %w", err)
+	}
+	return total, open, merged, nil
+}
+
+func (r *PRRepo) GetAllUsersWithAssignmentCounts(ctx context.Context) ([]struct{
+	UserID      string `json:"user_id"`
+	Assignments int    `json:"assignments"`
+}, error) {
+	const query = `
+		SELECT user_id, COUNT(*) as assignments
+		FROM pull_requests, unnest(assigned_reviewers) AS user_id
+		GROUP BY user_id;
+	`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("get all users with assignment counts failed: %w", err)
+	}
+	defer rows.Close()
+
+	var result []struct{
+		UserID      string `json:"user_id"`
+		Assignments int    `json:"assignments"`
+	}
+
+	for rows.Next() {
+		var user struct{
+			UserID      string `json:"user_id"`
+			Assignments int    `json:"assignments"`
+		}
+		if err := rows.Scan(&user.UserID, &user.Assignments); err != nil {
+			return nil, fmt.Errorf("scan user assignment count failed: %w", err)
+		}
+		result = append(result, user)
+	}
+	
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration failed: %w", err)
+	}
+	return result, nil
+}

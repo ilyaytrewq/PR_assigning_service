@@ -231,6 +231,21 @@ func (h *Handler) PostUsersSetIsActive(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.services.GetStats(r.Context())
+	if err != nil {
+		log.Println("GetStats:", err)
+		h.writeError(w, http.StatusInternalServerError, api.NOTFOUND, "internal error")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		log.Println("GetStats encode:", err)
+	}
+}
+
 func (h *Handler) writeError(w http.ResponseWriter, status int, code api.ErrorResponseErrorCode, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
