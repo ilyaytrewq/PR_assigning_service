@@ -1,3 +1,4 @@
+// Package handlers implements HTTP handlers for the API.
 package handlers
 
 import (
@@ -11,14 +12,17 @@ import (
 	"ilyaytrewq/PR_assigning_service/internal/service"
 )
 
+// Handler holds dependencies for HTTP handlers.
 type Handler struct {
 	services *service.Services
 }
 
+// NewHandler creates a new Handler instance.
 func NewHandler(services *service.Services) *Handler {
 	return &Handler{services: services}
 }
 
+// PostPullRequestCreate handles PR creation.
 func (h *Handler) PostPullRequestCreate(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	var body api.PostPullRequestCreateJSONBody
@@ -53,6 +57,7 @@ func (h *Handler) PostPullRequestCreate(w http.ResponseWriter, r *http.Request) 
 	log.Printf("PostPullRequestCreate success: author_id=%s pr_id=%s duration=%s", body.AuthorId, body.PullRequestId, time.Since(start))
 }
 
+// PostPullRequestMerge handles PR merging.
 func (h *Handler) PostPullRequestMerge(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	var body api.PostPullRequestMergeJSONBody
@@ -84,6 +89,7 @@ func (h *Handler) PostPullRequestMerge(w http.ResponseWriter, r *http.Request) {
 	log.Printf("PostPullRequestMerge success: pr_id=%s duration=%s", body.PullRequestId, time.Since(start))
 }
 
+// PostPullRequestReassign handles reviewer reassignment.
 func (h *Handler) PostPullRequestReassign(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	var body api.PostPullRequestReassignJSONBody
@@ -125,6 +131,7 @@ func (h *Handler) PostPullRequestReassign(w http.ResponseWriter, r *http.Request
 	log.Printf("PostPullRequestReassign success: pr_id=%s old_user=%s new_user=%s duration=%s", body.PullRequestId, body.OldUserId, replacedBy, time.Since(start))
 }
 
+// PostTeamAdd handles team creation.
 func (h *Handler) PostTeamAdd(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	var team api.Team
@@ -161,6 +168,7 @@ func (h *Handler) PostTeamAdd(w http.ResponseWriter, r *http.Request) {
 	log.Printf("PostTeamAdd success: team_name=%s members=%d duration=%s", team.TeamName, len(team.Members), time.Since(start))
 }
 
+// GetTeamGet handles retrieving team details.
 func (h *Handler) GetTeamGet(w http.ResponseWriter, r *http.Request, params api.GetTeamGetParams) {
 	start := time.Now()
 	teamName := string(params.TeamName)
@@ -187,6 +195,7 @@ func (h *Handler) GetTeamGet(w http.ResponseWriter, r *http.Request, params api.
 	log.Printf("GetTeamGet success: team_name=%s members=%d duration=%s", teamName, len(team.Members), time.Since(start))
 }
 
+// GetUsersGetReview handles retrieving PRs for review by a user.
 func (h *Handler) GetUsersGetReview(w http.ResponseWriter, r *http.Request, params api.GetUsersGetReviewParams) {
 	start := time.Now()
 	userID := string(params.UserId)
@@ -216,6 +225,7 @@ func (h *Handler) GetUsersGetReview(w http.ResponseWriter, r *http.Request, para
 	log.Printf("GetUsersGetReview success: user_id=%s prs=%d duration=%s", userID, len(prs), time.Since(start))
 }
 
+// PostUsersSetIsActive handles setting user active status.
 func (h *Handler) PostUsersSetIsActive(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	var body api.PostUsersSetIsActiveJSONBody
@@ -247,6 +257,7 @@ func (h *Handler) PostUsersSetIsActive(w http.ResponseWriter, r *http.Request) {
 	log.Printf("PostUsersSetIsActive success: user_id=%s is_active=%t duration=%s", body.UserId, body.IsActive, time.Since(start))
 }
 
+// GetStats handles retrieving system statistics.
 func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	stats, err := h.services.GetStats(r.Context())

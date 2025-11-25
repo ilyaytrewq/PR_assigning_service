@@ -1,5 +1,43 @@
 # PR_assigning_service
 
+## Запуск:
+
+```bash
+docker compose up --build
+```
+
+
+## Линтер
+
+В проекте используется `golangci-lint`.
+
+### Установка
+
+**macOS (Homebrew):**
+```bash
+brew install golangci-lint
+```
+
+**Linux / macOS (curl):**
+```bash
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.61.0
+```
+
+**Windows (PowerShell):**
+```powershell
+Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" -OutFile "install.ps1"
+.\install.ps1 -b $env:GOPATH\bin v1.61.0
+```
+*Или через Chocolatey:* `choco install golangci-lint`
+
+### Запуск
+
+Запуск линтера из корня проекта:
+
+```bash
+golangci-lint run ./...
+```
+
 ## Дополнительный функционал
 
 ### Эндпоинт статистики
@@ -11,11 +49,6 @@
 	- `total_users`, `active_users` — общее количество пользователей и число активных.
 - Параллельно выполняются четыре независимых запроса (`users`, `teams`, `pull_requests`, назначения по пользователям) через `sync.WaitGroup` и `sync.Mutex`
 
-Запуск:
-
-```bash
-docker compose up --build
-```
 
 ## Нагрузочное тестирование (k6)
 

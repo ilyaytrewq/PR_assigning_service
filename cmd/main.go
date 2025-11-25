@@ -32,10 +32,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to open db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			log.Printf("failed to close db: %v", err)
+		}
+	}()
 
 	if err := db.Ping(); err != nil {
-		log.Fatalf("failed to ping db: %v", err)
+		log.Printf("failed to ping db: %v", err)
+		return
 	}
 
 	log.Println("connected to postgres")
@@ -64,7 +70,8 @@ func main() {
 	}
 
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("server error: %v", err)
+		log.Printf("server error: %v", err)
+		return
 	}
 }
 

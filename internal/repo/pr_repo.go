@@ -13,14 +13,17 @@ import (
 	"github.com/lib/pq"
 )
 
+// PRRepo manages pull request data.
 type PRRepo struct {
 	db *sql.DB
 }
 
+// NewPRRepo creates a new PRRepo.
 func NewPRRepo(db *sql.DB) *PRRepo {
 	return &PRRepo{db: db}
 }
 
+// CreatePR creates a new pull request.
 func (r *PRRepo) CreatePR(ctx context.Context, pr *api.PullRequest) error {
 	const query = `
         INSERT INTO pull_requests (
@@ -62,6 +65,7 @@ func (r *PRRepo) CreatePR(ctx context.Context, pr *api.PullRequest) error {
 	return nil
 }
 
+// MergePR marks a PR as merged.
 func (r *PRRepo) MergePR(ctx context.Context, prID string, mergedAt time.Time) (*api.PullRequest, error) {
 	const query = `
         UPDATE pull_requests
@@ -102,6 +106,7 @@ func (r *PRRepo) MergePR(ctx context.Context, prID string, mergedAt time.Time) (
 	return &pr, nil
 }
 
+// ReassignReviewer replaces a reviewer for a PR.
 func (r *PRRepo) ReassignReviewer(
 	ctx context.Context,
 	prID string,
@@ -172,6 +177,7 @@ func (r *PRRepo) ReassignReviewer(
 	return &pr, nil
 }
 
+// GetByID retrieves a PR by its ID.
 func (r *PRRepo) GetByID(ctx context.Context, prID string) (*api.PullRequest, error) {
 	const query = `
         SELECT
@@ -207,6 +213,7 @@ func (r *PRRepo) GetByID(ctx context.Context, prID string) (*api.PullRequest, er
 	return &pr, nil
 }
 
+// GetByReviewer retrieves PRs assigned to a reviewer.
 func (r *PRRepo) GetByReviewer(ctx context.Context, userID string) ([]*api.PullRequest, error) {
 	const query = `
         SELECT
@@ -225,7 +232,7 @@ func (r *PRRepo) GetByReviewer(ctx context.Context, userID string) ([]*api.PullR
 	if err != nil {
 		return nil, fmt.Errorf("get PRs by reviewer %s failed: %w", userID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []*api.PullRequest
 
@@ -255,6 +262,7 @@ func (r *PRRepo) GetByReviewer(ctx context.Context, userID string) ([]*api.PullR
 	return result, nil
 }
 
+// CountPRs returns PR statistics.
 func (r *PRRepo) CountPRs(ctx context.Context) (total int, open int, merged int, err error) {
 	const query = `
 		SELECT
@@ -271,6 +279,7 @@ func (r *PRRepo) CountPRs(ctx context.Context) (total int, open int, merged int,
 	return total, open, merged, nil
 }
 
+// GetAllUsersWithAssignmentCounts returns assignment counts for all users.
 func (r *PRRepo) GetAllUsersWithAssignmentCounts(ctx context.Context) ([]struct {
 	UserID      string `json:"user_id"`
 	Assignments int    `json:"assignments"`
@@ -284,7 +293,7 @@ func (r *PRRepo) GetAllUsersWithAssignmentCounts(ctx context.Context) ([]struct 
 	if err != nil {
 		return nil, fmt.Errorf("get all users with assignment counts failed: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []struct {
 		UserID      string `json:"user_id"`

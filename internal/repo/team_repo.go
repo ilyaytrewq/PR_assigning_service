@@ -9,16 +9,19 @@ import (
 	"ilyaytrewq/PR_assigning_service/internal/api"
 )
 
+// TeamRepo handles database operations for teams.
 type TeamRepo struct {
 	db *sql.DB
 }
 
+// NewTeamRepo creates a new TeamRepo instance.
 func NewTeamRepo(db *sql.DB) *TeamRepo {
 	return &TeamRepo{
 		db: db,
 	}
 }
 
+// InsertTeamTx inserts a new team within a transaction.
 func (tr *TeamRepo) InsertTeamTx(ctx context.Context, tx *sql.Tx, team *api.Team) error {
 	const query = `
         INSERT INTO teams (team_name)
@@ -43,6 +46,7 @@ func (tr *TeamRepo) InsertTeamTx(ctx context.Context, tx *sql.Tx, team *api.Team
 	return nil
 }
 
+// InsertTeam inserts a new team.
 func (tr *TeamRepo) InsertTeam(ctx context.Context, team *api.Team) error {
 	const query = `
         INSERT INTO teams (team_name)
@@ -67,6 +71,7 @@ func (tr *TeamRepo) InsertTeam(ctx context.Context, team *api.Team) error {
 	return nil
 }
 
+// GetTeam retrieves a team by name.
 func (tr *TeamRepo) GetTeam(ctx context.Context, teamName string) (*api.Team, error) {
 	const teamQuery = `
         SELECT team_name FROM teams WHERE team_name = $1
@@ -90,7 +95,7 @@ func (tr *TeamRepo) GetTeam(ctx context.Context, teamName string) (*api.Team, er
 	if err != nil {
 		return nil, fmt.Errorf("get team %s members query failed: %w", teamName, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	team.Members = []api.TeamMember{}
 	for rows.Next() {
@@ -104,6 +109,7 @@ func (tr *TeamRepo) GetTeam(ctx context.Context, teamName string) (*api.Team, er
 	return &team, nil
 }
 
+// CountTeams returns the total number of teams.
 func (tr *TeamRepo) CountTeams(ctx context.Context) (int, error) {
 	const query = `
 		SELECT COUNT(*) FROM teams

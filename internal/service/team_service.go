@@ -11,16 +11,19 @@ import (
 	"ilyaytrewq/PR_assigning_service/internal/repo"
 )
 
+// TeamService handles business logic for teams.
 type TeamService struct {
 	db    *sql.DB
 	teams *repo.TeamRepo
 	users *repo.UserRepository
 }
 
+// NewTeamService creates a new TeamService instance.
 func NewTeamService(db *sql.DB, teams *repo.TeamRepo, users *repo.UserRepository) *TeamService {
 	return &TeamService{db: db, teams: teams, users: users}
 }
 
+// AddTeam creates a new team and its members.
 func (s *TeamService) AddTeam(ctx context.Context, team *api.Team) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -61,6 +64,7 @@ func (s *TeamService) AddTeam(ctx context.Context, team *api.Team) error {
 	return nil
 }
 
+// GetTeam retrieves a team by name.
 func (s *TeamService) GetTeam(ctx context.Context, teamName string) (*api.Team, error) {
 	team, err := s.teams.GetTeam(ctx, teamName)
 	if err != nil {
@@ -72,6 +76,7 @@ func (s *TeamService) GetTeam(ctx context.Context, teamName string) (*api.Team, 
 	return team, nil
 }
 
+// CountTeams returns the total number of teams.
 func (s *TeamService) CountTeams(ctx context.Context) (int, error) {
 	count, err := s.teams.CountTeams(ctx)
 	if err != nil {

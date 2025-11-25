@@ -10,6 +10,7 @@ import (
 	"ilyaytrewq/PR_assigning_service/internal/repo"
 )
 
+// Services holds all service instances.
 type Services struct {
 	db    *sql.DB
 	Teams *TeamService
@@ -17,6 +18,7 @@ type Services struct {
 	PRs   *PRService
 }
 
+// NewServices creates a new Services instance.
 func NewServices(
 	db *sql.DB,
 	teamRepo *repo.TeamRepo,
@@ -31,6 +33,7 @@ func NewServices(
 	}
 }
 
+// StatsResult holds system statistics.
 type StatsResult struct {
 	TotalTeams int `json:"total_teams"`
 
@@ -46,6 +49,7 @@ type StatsResult struct {
 	}
 }
 
+// GetStats retrieves system statistics.
 func (s *Services) GetStats(ctx context.Context) (*StatsResult, error) {
 	var (
 		result StatsResult
@@ -105,7 +109,7 @@ func (s *Services) GetStats(ctx context.Context) (*StatsResult, error) {
 	wg.Wait()
 	close(errs)
 
-	var resErr error = nil
+	var resErr error
 	for err := range errs {
 		log.Printf("GetStats error: %v", err)
 		resErr = errors.Join(resErr, err)

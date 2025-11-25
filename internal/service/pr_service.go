@@ -10,12 +10,14 @@ import (
 	"ilyaytrewq/PR_assigning_service/internal/repo"
 )
 
+// PRService handles business logic for pull requests.
 type PRService struct {
 	prs   *repo.PRRepo
 	users *repo.UserRepository
 	teams *repo.TeamRepo
 }
 
+// NewPRService creates a new PRService instance.
 func NewPRService(prs *repo.PRRepo, users *repo.UserRepository, teams *repo.TeamRepo) *PRService {
 	return &PRService{
 		prs:   prs,
@@ -24,6 +26,7 @@ func NewPRService(prs *repo.PRRepo, users *repo.UserRepository, teams *repo.Team
 	}
 }
 
+// CreatePR creates a new pull request and assigns reviewers.
 func (s *PRService) CreatePR(ctx context.Context, body *api.PostPullRequestCreateJSONBody) (*api.PullRequest, error) {
 	author, err := s.users.Get(ctx, body.AuthorId)
 	if err != nil {
@@ -75,6 +78,7 @@ func (s *PRService) CreatePR(ctx context.Context, body *api.PostPullRequestCreat
 	return pr, nil
 }
 
+// MergePR marks a pull request as merged.
 func (s *PRService) MergePR(ctx context.Context, prID string) (*api.PullRequest, error) {
 	now := time.Now().UTC()
 
@@ -89,6 +93,7 @@ func (s *PRService) MergePR(ctx context.Context, prID string) (*api.PullRequest,
 	return pr, nil
 }
 
+// ReassignReviewer replaces a reviewer with another candidate.
 func (s *PRService) ReassignReviewer(ctx context.Context, body *api.PostPullRequestReassignJSONBody) (*api.PullRequest, string, error) {
 	pr, err := s.prs.GetByID(ctx, body.PullRequestId)
 	if err != nil {
@@ -157,10 +162,12 @@ func (s *PRService) ReassignReviewer(ctx context.Context, body *api.PostPullRequ
 	return updatedPR, newReviewerID, nil
 }
 
+// GetCountPRs returns PR statistics.
 func (s *PRService) GetCountPRs(ctx context.Context) (total int, open int, merged int, err error) {
 	return s.prs.CountPRs(ctx)
 }
 
+// GetAllUsersWithAssignmentCounts returns assignment counts for all users.
 func (s *PRService) GetAllUsersWithAssignmentCounts(ctx context.Context) ([]struct {
 	UserID      string `json:"user_id"`
 	Assignments int    `json:"assignments"`
